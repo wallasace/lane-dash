@@ -155,9 +155,9 @@ public class SpaceTheme
         }
     }
 
-    // Perspectiva falsa da pista (mesma fórmula de LDPersp em LDCommon.cginc): 1 embaixo, ~0.75 no topo
+    // Perspectiva falsa da pista (mesma fórmula de LDPersp em LDCommon.cginc): 1 embaixo, ~0.62 no topo
     public static float Perspective(float worldY, float camY) =>
-        Mathf.Clamp(1f - (worldY - camY + 8f) * 0.0135f, 0.7f, 1.05f);
+        Mathf.Clamp(1f - (worldY - camY + 8f) * 0.021f, 0.6f, 1.05f);
 
     // Inclina e "achata" a nave ao trocar de pista, imitando uma rolagem 3D. bank: -1..1
     public void Bank(float bank)

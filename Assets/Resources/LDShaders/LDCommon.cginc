@@ -36,11 +36,11 @@ v2f vert(appdata v)
     return o;
 }
 
-// Perspectiva falsa: a pista afunila para o alto da tela (1 embaixo, ~0.75 no topo).
+// Perspectiva falsa: a pista afunila para o alto da tela (1 embaixo, ~0.62 no topo).
 // Mesma fórmula de SpaceTheme.Perspective no C#, que posiciona os itens.
 float LDPersp(float worldY)
 {
-    return clamp(1.0 - (worldY - _LD_CamY + 8.0) * 0.0135, 0.7, 1.05);
+    return clamp(1.0 - (worldY - _LD_CamY + 8.0) * 0.021, 0.6, 1.05);
 }
 
 // Coordenada local do quad em -1..1
