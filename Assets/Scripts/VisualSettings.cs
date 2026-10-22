@@ -6,6 +6,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "VisualSettings", menuName = "Jogo/Ajustes Visuais")]
 public class VisualSettings : ScriptableObject
 {
+    [Header("Skin")]
+    [Tooltip("Liga o visual espacial (shaders procedurais). Vale ao dar Play / reiniciar a cena.")]
+    public bool spaceSkin = true;
+
     [Header("Brilho dos blocos (backlight)")]
     [Tooltip("Intensidade da luz atrás de cada bloco. Os brilhos dos blocos se somam.")]
     [Range(0f, 1f)] public float blockGlowAlpha = 0.28f;

@@ -13,7 +13,7 @@ public class LaneDashGame : MonoBehaviour, IGame
             new GameObject("LaneDashGame").AddComponent<LaneDashGame>();
     }
 
-    class Item { public Transform t; public bool coin; }
+    class Item { public Transform t; public bool coin; public float spin, laneX; public Vector3 baseScale; }
 
     readonly float[] lanes = { -2.2f, 0f, 2.2f };
     const float PlayerY = -7f;
@@ -39,8 +39,9 @@ public class LaneDashGame : MonoBehaviour, IGame
     Transform player;
     readonly SpriteRenderer[] trail = new SpriteRenderer[TrailDots];
     int lane = 1, coins, startFrame;
-    float speed, distance, elapsed, nextSpawnAt, camTargetY;
+    float speed, distance, elapsed, nextSpawnAt, camTargetY, scroll;
     bool dead;
+    SpaceTheme space; // skin espacial (Tools > Ajustes Visuais > Skin); null = visual original
     readonly List<Item> items = new List<Item>();
     readonly List<Transform> dashes = new List<Transform>();
 
@@ -55,9 +56,18 @@ public class LaneDashGame : MonoBehaviour, IGame
         glow = Util.Glow();
         block = Util.Block();
 
-        BuildDotGrid();
-        BuildRoad();
-        BuildPlayer();
+        if (VisualSettings.I.spaceSkin)
+        {
+            player = new GameObject("Player").transform;
+            player.position = new Vector3(0, PlayerY, 0);
+            space = new SpaceTheme(cam, player, square);
+        }
+        else
+        {
+            BuildDotGrid();
+            BuildRoad();
+            BuildPlayer();
+        }
 
         Shell.Create(this, new ShellTheme
         {
@@ -213,7 +223,7 @@ public class LaneDashGame : MonoBehaviour, IGame
         dead = false;
         player.gameObject.SetActive(true);
         player.position = new Vector3(0, PlayerY, 0);
-        for (int k = 0; k < TrailDots; k++)
+        for (int k = 0; k < TrailDots && trail[k]; k++)
         {
             trail[k].gameObject.SetActive(true);
             trail[k].transform.position = new Vector3(0, PlayerY - 0.55f * (k + 1), 0);
@@ -230,11 +240,15 @@ public class LaneDashGame : MonoBehaviour, IGame
 
     void Update()
     {
-        RefreshBacklightsIfChanged();
-        UpdateDotGridTiling();
+        if (space == null)
+        {
+            RefreshBacklightsIfChanged();
+            UpdateDotGridTiling();
+        }
         var cp = cam.transform.position;
         cp.y = Mathf.Lerp(cp.y, camTargetY, 4f * Time.deltaTime);
         cam.transform.position = cp;
+        UpdateSpace();
 
         // No menu as faixas continuam andando devagar, como "tela viva"
         if (!Shell.I.Playing)
@@ -268,9 +282,21 @@ public class LaneDashGame : MonoBehaviour, IGame
         if (Shell.I.Playing) Shell.I.SetScore(Score, false);
     }
 
+    // Skin espacial: rolagem do cenário, inclinação da nave e partículas (roda também no menu)
+    void UpdateSpace()
+    {
+        if (space == null) return;
+        bool playing = Shell.I.Playing;
+        float worldSpeed = playing ? speed : dead ? 0f : MenuSpeed;
+        scroll += worldSpeed * Time.deltaTime;
+        space.Bank(Mathf.Clamp((lanes[lane] - player.position.x) / 2.2f, -1f, 1f));
+        space.Tick(Time.deltaTime, scroll, playing ? Mathf.InverseLerp(7f, 20f, speed) : 0f,
+            Mathf.Max(worldSpeed, 3f), !dead);
+    }
+
     void UpdateTrail(float playerX)
     {
-        for (int k = 0; k < TrailDots; k++)
+        for (int k = 0; k < TrailDots && trail[k]; k++)
         {
             var p = trail[k].transform.position;
             p.x = Mathf.Lerp(p.x, playerX, 14f / (k + 2) * Time.deltaTime);
@@ -326,6 +352,12 @@ public class LaneDashGame : MonoBehaviour, IGame
     // Quadrado vermelho com relevo, sombra e brilho leve
     void AddObstacle(float x)
     {
+        if (space != null)
+        {
+            var rock = space.Asteroid(new Vector3(x, SpawnY, 0));
+            items.Add(new Item { t = rock, spin = Random.Range(-90f, 90f), laneX = x, baseScale = rock.localScale });
+            return;
+        }
         const float size = 1.4f;
         var sr = Util.MakeSprite("Obstacle", block, Red, new Vector3(x, SpawnY, 0), Vector2.one, 2);
         sr.drawMode = SpriteDrawMode.Sliced;
@@ -364,6 +396,12 @@ public class LaneDashGame : MonoBehaviour, IGame
     // Moeda: disco dourado com anel interno e brilho
     void AddCoin(float x)
     {
+        if (space != null)
+        {
+            var gem = space.Crystal(new Vector3(x, SpawnY, 0));
+            items.Add(new Item { t = gem, coin = true, laneX = x, baseScale = gem.localScale });
+            return;
+        }
         var sr = Util.MakeSprite("Coin", circle, CoinGold, new Vector3(x, SpawnY, 0), Vector2.one * 0.75f, 2);
         Child(sr.transform, "Glow", glow, new Color(CoinGold.r, CoinGold.g, CoinGold.b, 0.3f), Vector3.zero, 2.2f, 1);
         Child(sr.transform, "Ring", circle, CoinDark, Vector3.zero, 0.74f, 3);
@@ -377,9 +415,21 @@ public class LaneDashGame : MonoBehaviour, IGame
         {
             var it = items[i];
             var p = it.t.position; p.y -= step;
+            if (space != null)
+            {
+                // Perspectiva: mais longe (em cima) = mais perto do centro e menor
+                float s = SpaceTheme.Perspective(p.y, cam.transform.position.y);
+                p.x = it.laneX * s;
+                it.t.localScale = it.baseScale * s;
+            }
             it.t.position = p;
 
-            if (it.coin)
+            if (space != null)
+            {
+                // O cristal gira dentro do próprio shader; só o asteroide gira o objeto
+                if (!it.coin) it.t.Rotate(0, 0, it.spin * Time.deltaTime);
+            }
+            else if (it.coin)
             {
                 float pulse = 0.75f + Mathf.Sin(Time.time * 8f) * 0.06f;
                 it.t.localScale = new Vector3(pulse, pulse, 1);
@@ -390,7 +440,8 @@ public class LaneDashGame : MonoBehaviour, IGame
             {
                 coins++;
                 Sfx.Play("coin");
-                Juice.Burst(p, CoinGold, 10, 5f, 0.18f);
+                if (space != null) space.Pickup(p);
+                else Juice.Burst(p, CoinGold, 10, 5f, 0.18f);
                 Juice.Pop(player, 0.25f, 0.15f);
                 Shell.I.SetScore(Score);
                 Shell.I.ShowMessage("+10", 0.5f, 0.27f);
@@ -415,9 +466,10 @@ public class LaneDashGame : MonoBehaviour, IGame
         dead = true;
         Sfx.Play("lose");
         Juice.Shake(0.5f, 0.45f);
-        Juice.Burst(player.position, Cyan, 24, 9f, 0.3f);
+        if (space != null) space.Explode(player.position);
+        else Juice.Burst(player.position, Cyan, 24, 9f, 0.3f);
         player.gameObject.SetActive(false);
-        foreach (var t in trail) t.gameObject.SetActive(false);
+        foreach (var t in trail) if (t) t.gameObject.SetActive(false);
         Shell.I.GameOver(Score);
     }
 }
