@@ -45,6 +45,9 @@ public class SpaceTheme
         this.cam = cam;
         this.quad = quad;
         root = new GameObject("SpaceTheme").transform;
+        // Bloom na câmera: o brilho do neon, jatos, lava e cristais vaza para a cena toda
+        if (!cam.GetComponent<LDBloom>()) cam.gameObject.AddComponent<LDBloom>();
+
         rockMat = Mat("LD_Asteroid");
         gemMat = Mat("LD_Crystal");
         glowMat = Mat("LD_Glow");

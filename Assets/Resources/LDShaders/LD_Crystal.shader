@@ -57,6 +57,8 @@ Shader "LaneDash/Crystal"
                 float bob = sin(t * 2.0 + phase) * 0.04;     // flutua de leve
                 float2 q = p - float2(0, CenterY + bob);
                 float2 win = smoothstep(1.0, 0.8, abs(l));
+                // Máscara radial: halo, sombra e reflexo somem antes da borda do quad (sem corte reto)
+                float radial = smoothstep(1.0, 0.55, length(l));
 
                 float d = GemSDF(q);
                 float aa = fwidth(d) * 1.2;
@@ -67,10 +69,10 @@ Shader "LaneDash/Crystal"
 
                 // Reflexo dourado na pista e halo
                 float refl = exp(-p.x * p.x * 45.0) * exp(-pow(max(-(p.y + 0.75), 0.0), 2.0) * 6.0) * smoothstep(-0.5, -0.8, p.y);
-                rgb += Gold * refl * 0.5 * win.x * win.y;
-                rgb += Gold * exp(-max(d, 0.0) * 6.5) * 1.0 * (1.0 - fill) * win.y * smoothstep(1.0, 0.45, abs(l.x));
+                rgb += Gold * refl * 0.5 * win.x * smoothstep(-1.0, -0.82, p.y);
+                rgb += Gold * exp(-max(d, 0.0) * 6.5) * 1.0 * (1.0 - fill) * radial;
                 // Sombra escura em volta: destaca o cristal do piso
-                alpha = max(alpha, exp(-max(d, 0.0) * 10.0) * 0.5 * win.x * win.y);
+                alpha = max(alpha, exp(-max(d, 0.0) * 10.0) * 0.5 * radial);
 
                 // Metade de trás do anel (fica atrás da gema)
                 float front;

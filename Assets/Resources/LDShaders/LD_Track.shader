@@ -76,7 +76,7 @@ Shader "LaneDash/Track"
                     float seam = smoothstep(0.03, 0.01, e);
                     float bevel = smoothstep(0.09, 0.025, e) * (1.0 - seam);
                     float2 tilt = corner < min(dist.x, dist.y) ? slope * 0.707 : (dist.x < dist.y ? float2(slope.x, 0) : float2(0, slope.y));
-                    float3 N = normalize(float3(tilt * bevel * 1.2, 1.0));
+                    float3 N = normalize(float3(tilt * bevel * 0.6, 1.0));
 
                     float ph = hash21(id + 3.7);
                     float grime = fbm3(float2(x * 1.6, ys * 0.7) + ph * 5.0);
@@ -87,7 +87,7 @@ Shader "LaneDash/Track"
                     albedo *= lerp(0.75, 1.0, smoothstep(0.3, 0.6, ax));   // pista do meio um pouco mais escura
 
                     float wet = smoothstep(0.42, 0.62, vnoise(float2(x * 0.7, ys * 0.15) + 11.0));
-                    float rough = lerp(0.6, 0.1, wet);
+                    float rough = lerp(0.6, 0.38, wet);
                     float ao = 1.0 - seam * 0.85;
 
                     // Grelhas de ventilação perto das bordas
@@ -175,8 +175,8 @@ Shader "LaneDash/Track"
                     col += Magenta * plate * 0.45 + Magenta * 0.05;
 
                     // Faixa de neon interna (grossa) e externa (mais fina)
-                    col += NeonBand(abs(u - 0.11) * WallW, 0.16, pulse) * 0.45;
-                    col += NeonBand(abs(u - 0.76) * WallW, 0.09, pulse * 0.7) * 0.3;
+                    col += NeonBand(abs(u - 0.11) * WallW, 0.16, pulse) * 0.85;
+                    col += NeonBand(abs(u - 0.76) * WallW, 0.09, pulse * 0.7) * 0.6;
 
                     float outer = smoothstep(1.0, 0.94, u);
                     rgb = col * outer;
@@ -185,7 +185,7 @@ Shader "LaneDash/Track"
 
                 // Brilho do neon que vaza para o espaço (aditivo)
                 float spill = exp(-max(ax - (FloorHalf + WallW), 0.0) * 2.2) * step(FloorHalf + WallW * 0.94, ax);
-                rgb += Magenta * spill * 0.25;
+                rgb += Magenta * spill * 0.4;
 
                 // Foco: o cenário escurece com a distância da nave (holofote) e recua no geral;
                 // embaixo da nave, uma poça de luz ciano a separa do piso

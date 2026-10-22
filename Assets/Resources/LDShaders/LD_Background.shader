@@ -199,7 +199,7 @@ Shader "LaneDash/Background"
                 col = lerp(col, rocks.rgb, rocks.a);
 
                 col += ShootingStars(px, screen);
-                return fixed4(col * 0.65, 1);   // fundo recuado: é palco, não protagonista
+                return fixed4(col * 0.85, 1);   // fundo recuado: é palco, não protagonista
             }
             ENDCG
         }
