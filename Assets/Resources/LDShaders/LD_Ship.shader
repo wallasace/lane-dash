@@ -7,7 +7,11 @@
 // A cor de destaque vem da cor do vértice (SpriteRenderer.color).
 Shader "LaneDash/Ship"
 {
-    Properties { [PerRendererData] _MainTex ("Sprite", 2D) = "white" {} }
+    Properties
+    {
+        [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
+        _Refl ("Reflexo no piso (0 = objeto normal)", Float) = 0
+    }
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "PreviewType"="Plane" }
@@ -166,7 +170,7 @@ Shader "LaneDash/Ship"
 
                 // Sombra escura em volta da nave: o jogador é sempre o elemento mais destacado
                 float shadow = exp(-max(d, 0.0) * 9.0) * 0.6 * win.x * win.y;
-                return fixed4(rgb, max(fill, shadow));
+                return Reflected(rgb, max(fill, shadow), l.y);
             }
             ENDCG
         }

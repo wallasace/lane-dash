@@ -7,7 +7,11 @@
 // O quad (2.8 unidades) é maior que a rocha para caber a aura e os detritos; p está em unidades do mundo.
 Shader "LaneDash/Asteroid"
 {
-    Properties { [PerRendererData] _MainTex ("Sprite", 2D) = "white" {} }
+    Properties
+    {
+        [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
+        _Refl ("Reflexo no piso (0 = objeto normal)", Float) = 0
+    }
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "PreviewType"="Plane" }
@@ -144,7 +148,7 @@ Shader "LaneDash/Asteroid"
                 float warn = 0.55 + 0.45 * sin(t * 9.0 + seed);
                 rgb += float3(1.0, 0.12, 0.04) * exp(-abs(d - 0.09) * 38.0) * warn * 1.3 * win.x * win.y;
                 alpha = max(alpha, exp(-max(d, 0.0) * 4.0) * 0.6 * win.x * win.y);
-                return fixed4(rgb, alpha);
+                return Reflected(rgb, alpha, 0.6 - length(l) * 1.2);   // gira com a rocha: fade radial
             }
             ENDCG
         }

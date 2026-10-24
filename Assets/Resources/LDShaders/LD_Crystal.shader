@@ -7,7 +7,11 @@
 // Quad de 1.2 x 2.0 unidades; p está em unidades do mundo.
 Shader "LaneDash/Crystal"
 {
-    Properties { [PerRendererData] _MainTex ("Sprite", 2D) = "white" {} }
+    Properties
+    {
+        [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
+        _Refl ("Reflexo no piso (0 = objeto normal)", Float) = 0
+    }
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "PreviewType"="Plane" }
@@ -166,7 +170,7 @@ Shader "LaneDash/Crystal"
                            * pow(0.5 + 0.5 * sin(t * 3.0 + phase * 3.0), 4.0);
                 rgb += GoldLight * star * 1.5;
 
-                return fixed4(rgb, alpha);
+                return Reflected(rgb, alpha, l.y);
             }
             ENDCG
         }

@@ -1,4 +1,4 @@
-// Pista (fiel ao concept), PBR estilizado, com perspectiva falsa (afunila para o alto; ver LDPersp):
+// Pista (fiel ao concept), PBR estilizado, reta como no jogo original:
 // - Piso: placas metálicas escuras de cantos chanfrados, muito desgaste e arranhões, partes
 //   molhadas refletindo o neon, grelhas perto das bordas, linhas azuis transversais e
 //   faixas ciano longas com espaços curtos.
@@ -52,8 +52,7 @@ Shader "LaneDash/Track"
             fixed4 frag(v2f i) : SV_Target
             {
                 float y = i.wpos.y;
-                float persp = LDPersp(y);
-                float x = i.wpos.x / persp;     // x na pista (corrigido pela perspectiva)
+                float x = i.wpos.x;
                 float ys = y + _LD_Scroll;
                 float ax = abs(x);
                 float sx = x < 0.0 ? -1.0 : 1.0;
@@ -87,19 +86,20 @@ Shader "LaneDash/Track"
                     albedo *= lerp(0.75, 1.0, smoothstep(0.3, 0.6, ax));   // pista do meio um pouco mais escura
 
                     float wet = smoothstep(0.42, 0.62, vnoise(float2(x * 0.7, ys * 0.15) + 11.0));
-                    float rough = lerp(0.6, 0.38, wet);
+                    // Metal polido: liso no geral, um pouco mais áspero onde está gasto
+                    float rough = lerp(0.45, 0.22, wet);
                     float ao = 1.0 - seam * 0.85;
 
                     // Grelhas de ventilação perto das bordas
                     float ventZone = step(2.45, ax) * step(ax, 2.95) * step(0.15, frac(ys / 7.0)) * step(frac(ys / 7.0), 0.5);
                     ao *= 1.0 - ventZone * step(0.45, frac(ys * 9.0)) * 0.7;
 
-                    float3 col = Shade(N, albedo, 0.75, rough, ao, 0);
+                    float3 col = Shade(N, albedo, 0.8, rough, ao, 0);
 
                     // Reflexos do neon (fortes perto das paredes, alongados no sentido da pista)
                     float shine = lerp(0.3, 1.0, wet);
                     float streak = 0.55 + 0.45 * vnoise(float2(x * 3.0, ys * 0.3));
-                    col += Magenta * exp(-(FloorHalf - ax) * 1.8) * 0.3 * shine * streak;
+                    col += Magenta * exp(-(FloorHalf - ax) * 1.5) * 0.5 * shine * streak;   // neon refletido no metal
                     col += Magenta * exp(-(FloorHalf - ax) * 6.0) * 0.3;
                     float laneD = abs(ax - LaneSep);
                     col += Cyan * exp(-laneD * 4.0) * 0.12 * shine * streak;
@@ -108,7 +108,7 @@ Shader "LaneDash/Track"
 
                     // Faixas: traços longos com espaços curtos, núcleo branco e brilho
                     float dash = smoothstep(0.42, 0.38, abs(frac(ys * 0.45) - 0.5));
-                    float lw = laneD * persp;
+                    float lw = laneD;
                     // Guias, não protagonistas: brilho contido para não competir com nave, perigos e cristais
                     col += Cyan * smoothstep(0.06, 0.03, lw) * dash * 0.4 + float3(0.85, 1, 1) * smoothstep(0.025, 0.0, lw) * dash * 0.12;
                     col += Cyan * exp(-lw * 12.0) * 0.25 * (0.4 + 0.6 * dash);

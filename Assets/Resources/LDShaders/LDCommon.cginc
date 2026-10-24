@@ -36,11 +36,14 @@ v2f vert(appdata v)
     return o;
 }
 
-// Perspectiva falsa: a pista afunila para o alto da tela (1 embaixo, ~0.62 no topo).
-// Mesma fórmula de SpaceTheme.Perspective no C#, que posiciona os itens.
-float LDPersp(float worldY)
+// Reflexo no piso metálico: a mesma sprite desenhada de novo, deslocada para baixo (em direção à câmera),
+// com _Refl > 0. Fica mais fraca e some na parte de baixo (a mais distante do objeto).
+float _Refl;
+fixed4 Reflected(float3 rgb, float alpha, float ly)
 {
-    return clamp(1.0 - (worldY - _LD_CamY + 8.0) * 0.021, 0.6, 1.05);
+    if (_Refl <= 0.0) return fixed4(rgb, alpha);
+    float f = _Refl * smoothstep(-1.0, 0.6, ly) * smoothstep(-1.0, -0.2, ly);
+    return fixed4(rgb * f, alpha * f * 0.35);
 }
 
 // Coordenada local do quad em -1..1

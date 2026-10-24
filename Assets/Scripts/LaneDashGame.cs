@@ -13,7 +13,7 @@ public class LaneDashGame : MonoBehaviour, IGame
             new GameObject("LaneDashGame").AddComponent<LaneDashGame>();
     }
 
-    class Item { public Transform t; public bool coin; public float spin, laneX; public Vector3 baseScale; }
+    class Item { public Transform t; public bool coin; public float spin; }
 
     readonly float[] lanes = { -2.2f, 0f, 2.2f };
     const float PlayerY = -7f;
@@ -42,6 +42,8 @@ public class LaneDashGame : MonoBehaviour, IGame
     float speed, distance, elapsed, nextSpawnAt, camTargetY, scroll;
     bool dead;
     SpaceTheme space; // skin espacial (Tools > Ajustes Visuais > Skin); null = visual original
+    TutorialHand tutorial;
+    bool waitingFirstTap;           // início da partida: parado até o primeiro toque
     readonly List<Item> items = new List<Item>();
     readonly List<Transform> dashes = new List<Transform>();
 
@@ -86,7 +88,10 @@ public class LaneDashGame : MonoBehaviour, IGame
             accent = Cyan,
             highlight = Shell.Gold,
             buildBrand = BuildBrand,
+            neonUi = space != null,
         });
+        tutorial = TutorialHand.Create(Shell.L("TOQUE NOS LADOS", "TAP LEFT OR RIGHT"));
+
         // Clima de corrida: Mi menor - Dó - Sol - Ré, 140 bpm
         Music.Play(new Music.Style
         {
@@ -217,6 +222,8 @@ public class LaneDashGame : MonoBehaviour, IGame
 
     public void ResetGame()
     {
+        waitingFirstTap = false;
+        if (tutorial) tutorial.Hide();
         foreach (var it in items) if (it.t) Destroy(it.t.gameObject);
         items.Clear();
         lane = 1; coins = 0; distance = 0; elapsed = 0; speed = 7f; nextSpawnAt = 4f;
@@ -235,6 +242,9 @@ public class LaneDashGame : MonoBehaviour, IGame
     public void Begin()
     {
         startFrame = Time.frameCount;
+        // A partida começa parada mostrando a mãozinha; o primeiro toque dá a largada
+        waitingFirstTap = true;
+        if (tutorial) tutorial.Show();
         camTargetY = 0f;
     }
 
@@ -254,6 +264,19 @@ public class LaneDashGame : MonoBehaviour, IGame
         if (!Shell.I.Playing)
         {
             if (!dead) MoveDashes(MenuSpeed * Time.deltaTime);
+            return;
+        }
+
+        if (waitingFirstTap)
+        {
+            // Jogo parado com a mãozinha: o primeiro toque em qualquer lado (ou seta/A/D) começa a correr
+            bool tapped = Util.PointerDown() || Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow)
+                          || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D);
+            if (Time.frameCount != startFrame && tapped)
+            {
+                waitingFirstTap = false;
+                if (tutorial) tutorial.Hide();
+            }
             return;
         }
 
@@ -286,8 +309,8 @@ public class LaneDashGame : MonoBehaviour, IGame
     void UpdateSpace()
     {
         if (space == null) return;
-        bool playing = Shell.I.Playing;
-        float worldSpeed = playing ? speed : dead ? 0f : MenuSpeed;
+        bool playing = Shell.I.Playing && !waitingFirstTap;   // parado esperando o primeiro toque conta como parado
+        float worldSpeed = playing ? speed : dead || waitingFirstTap ? 0f : MenuSpeed;
         scroll += worldSpeed * Time.deltaTime;
         space.Bank(Mathf.Clamp((lanes[lane] - player.position.x) / 2.2f, -1f, 1f));
         space.Tick(Time.deltaTime, scroll, playing ? Mathf.InverseLerp(7f, 20f, speed) : 0f,
@@ -326,6 +349,7 @@ public class LaneDashGame : MonoBehaviour, IGame
         {
             lane = target;
             Sfx.Play("move", Random.Range(0.95f, 1.05f), 0.7f);
+            space?.LaneChange(move);
         }
         else
         {
@@ -355,7 +379,7 @@ public class LaneDashGame : MonoBehaviour, IGame
         if (space != null)
         {
             var rock = space.Asteroid(new Vector3(x, SpawnY, 0));
-            items.Add(new Item { t = rock, spin = Random.Range(-90f, 90f), laneX = x, baseScale = rock.localScale });
+            items.Add(new Item { t = rock, spin = Random.Range(-90f, 90f) });
             return;
         }
         const float size = 1.4f;
@@ -399,7 +423,7 @@ public class LaneDashGame : MonoBehaviour, IGame
         if (space != null)
         {
             var gem = space.Crystal(new Vector3(x, SpawnY, 0));
-            items.Add(new Item { t = gem, coin = true, laneX = x, baseScale = gem.localScale });
+            items.Add(new Item { t = gem, coin = true });
             return;
         }
         var sr = Util.MakeSprite("Coin", circle, CoinGold, new Vector3(x, SpawnY, 0), Vector2.one * 0.75f, 2);
@@ -415,13 +439,6 @@ public class LaneDashGame : MonoBehaviour, IGame
         {
             var it = items[i];
             var p = it.t.position; p.y -= step;
-            if (space != null)
-            {
-                // Perspectiva: mais longe (em cima) = mais perto do centro e menor
-                float s = SpaceTheme.Perspective(p.y, cam.transform.position.y);
-                p.x = it.laneX * s;
-                it.t.localScale = it.baseScale * s;
-            }
             it.t.position = p;
 
             if (space != null)
@@ -464,12 +481,29 @@ public class LaneDashGame : MonoBehaviour, IGame
     void Die()
     {
         dead = true;
+        if (tutorial) tutorial.Hide();
         Sfx.Play("lose");
-        Juice.Shake(0.5f, 0.45f);
-        if (space != null) space.Explode(player.position);
-        else Juice.Burst(player.position, Cyan, 24, 9f, 0.3f);
+        if (space != null)
+        {
+            Juice.Shake(0.8f, 0.6f);
+            space.Explode(player.position);
+            StartCoroutine(HitStop());
+        }
+        else
+        {
+            Juice.Shake(0.5f, 0.45f);
+            Juice.Burst(player.position, Cyan, 24, 9f, 0.3f);
+        }
         player.gameObject.SetActive(false);
         foreach (var t in trail) if (t) t.gameObject.SetActive(false);
         Shell.I.GameOver(Score);
+    }
+
+    // Micro pausa no impacto (dá peso à explosão), em tempo real para não depender do timeScale
+    System.Collections.IEnumerator HitStop()
+    {
+        Time.timeScale = 0.05f;
+        yield return new WaitForSecondsRealtime(0.09f);
+        if (Mathf.Approximately(Time.timeScale, 0.05f)) Time.timeScale = 1f;
     }
 }

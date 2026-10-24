@@ -31,6 +31,7 @@ public struct ShellTheme
     public bool english;                               // textos das telas comuns em inglês
     public string xHandle;                             // usuário no X (sem @), botão nos créditos
     public string gitHubUser;                          // usuário no GitHub, botão nos créditos
+    public bool neonUi;                                // estilo "HUD neon" (skin espacial), ver NeonUi
 }
 
 // Telas e fluxo comuns aos jogos: menu, HUD, pausa, fim de jogo, som e recorde.
@@ -184,6 +185,7 @@ public class Shell : MonoBehaviour
         Secondary(ccard, L("VOLTAR", "BACK"), new Vector2(0.5f, 0.09f), Vector2.zero, new Vector2(600, 104), CloseCredits, 38);
 
         BuildRanking(canvas);
+        if (t.neonUi) NeonUi.Apply(canvas, title, scoreText, hud.transform);
         UpdateSoundLabel();
         ShowMenu();
     }
